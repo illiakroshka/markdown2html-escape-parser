@@ -43,3 +43,7 @@ HTML after parsing:
 Wikipedia **sourse**
 </pre></p>
 ```
+
+## Revert Commit
+
+[Link](https://github.com/illiakroshka/markdown2html-parser/commit/aa9f7a07e2c527422c9b04ae2ec7e12a6d98be74)
