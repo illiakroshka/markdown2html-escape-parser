@@ -1,3 +1,5 @@
+'use strict'
+
 import fs from 'node:fs/promises';
 
 const readFile = async (path) => {

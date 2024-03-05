@@ -1,4 +1,4 @@
-import fs from 'node:fs/promises';
+'use strict'
 
 const nestedRegex = [
   /^(\s*-\s+.+(\n|$))+/gm,
@@ -22,11 +22,12 @@ const validateTags = (markdown) => {
 
 const getMarkdownTags = (markdown) => {
   const markdownTagsRegex = /\*{1,2}|_|\`|\`\`\`/g;
-  const snakeCaseRegex = /._./g;
-  
+  const snakeCaseRegex= /[a-zA-Z0-9*`]_[a-zA-Z0-9*`]/g
   const snakeCases = markdown.match(snakeCaseRegex)
+  console.log(snakeCases)
   const validatedSnakeCases = validateSnakeCase(snakeCases);
-  
+  console.log(validatedSnakeCases)
+
   let cleanMarkdown = removeSnakeCases(markdown, validatedSnakeCases);
   cleanMarkdown = removeEmptyUnderscores(cleanMarkdown);
   
@@ -34,6 +35,7 @@ const getMarkdownTags = (markdown) => {
 }
 
 const hasNestedAndPairedTags = (tags) => {
+  if (!tags) return;
   if (tags.length % 2) throw new Error('Markdown shouldn not have unclosed tags')
   for (let i = 0; i < tags.length; i+=2) {
     if (tags[i] !== tags[i+1]) {
@@ -43,6 +45,7 @@ const hasNestedAndPairedTags = (tags) => {
 }
 
 const validateSnakeCase = (arr) => {
+  if (!arr) return [];
   const sorted = [];
   for (const element of arr) {
     if (element[0] === '`' && element[2] === '`') sorted.push(element);
@@ -53,6 +56,7 @@ const validateSnakeCase = (arr) => {
 }
 
 const removeSnakeCases = (markdown, arr) => {
+  if (!arr) return markdown
   for (const markdownElement of arr) {
     if (markdownElement[0] === '*' && markdownElement[2] === '*') {
       markdown = markdown.replace(markdownElement,'* *');
@@ -73,15 +77,13 @@ const removeEmptyUnderscores = (markdown) => {
 function parseMarkdownToHtml(markdownText) {
   const html = markdownText
     .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-    .replace(/(?<![a-zA-Z0-9])_(.*?)_(?![a-zA-Z0-9])/g, '<i>$1</i>')
-    .replace(/_(.*?)_/g, '<i>$1</i>')
+    .replace(/(?<=[ ,.:;\n\t]|^)_(?=\S)(.+?)(?<=\S)_(?=[ ,.:;\n\t]|$)/g, '<i>$1</i>')
     .replace(/`([^`]+)`/g, '<tt>$1</tt>')
     .replace(/(?:\r\n|\r|\n){2,}/g, '</p><p>')
 
   const preformatted = returnPreformatted(html);
-  preformatted.replace(/```\n([\s\S]*?)\n```/g, '<pre>$1</pre>');
-
-  return '<p>' + preformatted + '</p>';
+  const modifiedPreformatted = preformatted.replace(/```([\s\S]*?)```/g, '<pre>$1</pre>');
+  return '<p>' + modifiedPreformatted + '</p>';
 }
 
 function* preformattedHashGenerator () {
