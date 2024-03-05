@@ -1,29 +1,7 @@
-**word**
-_italic_
-`monospaced`
+**Markdown** is a _lightweight_ markup _language_for_ creating `formatted` text using a plain-text editor.
 
-_just_expample_
-```
-Preformatted text **He He**
-```
-
-_ - it is also good
-Paragraph1. Lorem Ipsum Dolor Sit Amet.
-This is still paragraph 1.
-
-And after a blank line this is paragraph 2.
-
-snake_kase
-
-**_**
-
-`_` - foof
-
-snake_case
-_italic case_
+_ - **John** Gruber and Aaron Swartz created _Markdown_, in 2004 as a markup `language` that_is intended to be easy to read in its source code form
 
 ```
-Preformatted text **He He**
+Wikipedia **sourse**
 ```
-
-
