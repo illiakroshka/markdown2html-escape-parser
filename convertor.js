@@ -1,13 +1,4 @@
-import * as fs from 'node:fs/promises';
-
-const TEST_PATH = '../sample/example.md';
-const readMarkDown =  async (path) => {
-  try {
-    return fs.readFile(path,'utf-8');
-  }catch (err) {
-    console.error('Error during reading the file',err);
-  }
-}
+import fs from 'node:fs/promises';
 
 const nestedRegex = [
   /^(\s*-\s+.+(\n|$))+/gm,
@@ -15,38 +6,68 @@ const nestedRegex = [
   /^(>\s+.+(\n|$))+/gm,
 ]
 
+const preformattedTextMap = new Map();
+
 const validateNestedMarkdown = (markdown) => {
   for (const regex of nestedRegex) {
-    if (markdown.match(regex)) return true;
+    if (markdown.match(regex)) throw new Error('Markdown should not have nested tags');
   }
   return false
 }
 
-const validateTagsClosed = (markdown) => {
-  const regexPattern = /\*{1,2}|_|\`|\`\`\`/g;
-  const matches = markdown.match(regexPattern);
-  const regex = /._./g;
-  const single = markdown.match(regex);
-  removeNonTags('_',single.length,matches);
-  return validatePairs(matches);
+const validateTags = (markdown) => {
+  const markdownTags = getMarkdownTags(markdown);
+  hasNestedAndPairedTags(markdownTags);
 }
 
-const validatePairs = (markdownTags) => {
-  const tags = ['*','**','_','`'];
-  for (const tag of tags) {
-    const fTags = markdownTags.filter((mtag) => mtag === tag )
-    if (fTags.length % 2) return false
-  }
-  return true;
+const getMarkdownTags = (markdown) => {
+  const markdownTagsRegex = /\*{1,2}|_|\`|\`\`\`/g;
+  const snakeCaseRegex = /._./g;
+  
+  const snakeCases = markdown.match(snakeCaseRegex)
+  const validatedSnakeCases = validateSnakeCase(snakeCases);
+  
+  let cleanMarkdown = removeSnakeCases(markdown, validatedSnakeCases);
+  cleanMarkdown = removeEmptyUnderscores(cleanMarkdown);
+  
+  return cleanMarkdown.match(markdownTagsRegex);
 }
 
-const removeNonTags = (tag, number, array) => {
-  while (number) {
-    let index = array.indexOf(tag);
-    array.splice(index, 1);
-    number--;
+const hasNestedAndPairedTags = (tags) => {
+  if (tags.length % 2) throw new Error('Markdown shouldn not have unclosed tags')
+  for (let i = 0; i < tags.length; i+=2) {
+    if (tags[i] !== tags[i+1]) {
+      throw new Error('Markdown has nested tags');
+    }
   }
-  return array;
+}
+
+const validateSnakeCase = (arr) => {
+  const sorted = [];
+  for (const element of arr) {
+    if (element[0] === '`' && element[2] === '`') sorted.push(element);
+    if (element[0] === '*' && element[2] === '*') sorted.push(element);
+    if (element[0] !== '`' && element[0] !== '*' && element[2] !== '`' && element[2] !== '*') sorted.push(element);
+  }
+  return sorted;
+}
+
+const removeSnakeCases = (markdown, arr) => {
+  for (const markdownElement of arr) {
+    if (markdownElement[0] === '*' && markdownElement[2] === '*') {
+      markdown = markdown.replace(markdownElement,'* *');
+    }
+    else if (markdownElement[0] === '`' && markdownElement[2] === '`') {
+      markdown = markdown.replace(markdownElement,'` `');
+    } else {
+      markdown = markdown.replace(markdownElement, '');
+    }
+  }
+  return markdown;
+}
+
+const removeEmptyUnderscores = (markdown) => {
+  return markdown.replace(/(?<=^|\s)_+(?=\s|$)/g,'');
 }
 
 function parseMarkdownToHtml(markdownText) {
@@ -54,20 +75,47 @@ function parseMarkdownToHtml(markdownText) {
     .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
     .replace(/(?<![a-zA-Z0-9])_(.*?)_(?![a-zA-Z0-9])/g, '<i>$1</i>')
     .replace(/_(.*?)_/g, '<i>$1</i>')
-    .replace(/```\n([\s\S]*?)\n```/g, '<pre>$1</pre>')
     .replace(/`([^`]+)`/g, '<tt>$1</tt>')
     .replace(/(?:\r\n|\r|\n){2,}/g, '</p><p>')
 
-  return '<p>' + html + '</p>';
+  const preformatted = returnPreformatted(html);
+  preformatted.replace(/```\n([\s\S]*?)\n```/g, '<pre>$1</pre>');
+
+  return '<p>' + preformatted + '</p>';
 }
 
-const main = async () => {
-  const markdown = await readMarkDown(TEST_PATH);
-  if (validateNestedMarkdown(markdown)) throw new Error('Markdown should not have nested tags')
-  if (!validateTagsClosed(markdown)) throw new Error('Markdown shouldn not have unclosed tags');
-  parseMarkdownToHtml(markdown);
+function* preformattedHashGenerator () {
+  let index = 0;
+  while (true){
+    yield Symbol(index);
+    index++;
+  }
 }
 
-main();
+const removePreformatted = (markdown) => {
+  const hashGenerator = preformattedHashGenerator();
+  const preformattedRegex = /```\n([\s\S]*?)\n```/g
+  const preformattedText = markdown.match(preformattedRegex);
+  for (const text of preformattedText) {
+    let hash = hashGenerator.next();
+    preformattedTextMap.set(hash, text);
+    markdown = markdown.replace(text, hash);
+  }
+  return markdown;
+}
 
+const returnPreformatted = (markdown) => {
+  for (const [key, value] of preformattedTextMap) {
+    markdown = markdown.replace(key,value);
+  }
+  return markdown;
+}
 
+const parse = (markdown) => {
+  const formattedText = removePreformatted(markdown);
+  validateNestedMarkdown(formattedText)
+  validateTags(formattedText);
+  return parseMarkdownToHtml(formattedText)
+}
+
+export {parse};
