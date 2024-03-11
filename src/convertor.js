@@ -21,17 +21,9 @@ const validateTags = (markdown) => {
 }
 
 const getMarkdownTags = (markdown) => {
-  const markdownTagsRegex = /\*{1,2}|_|\`|\`\`\`/g;
-  const snakeCaseRegex= /[a-zA-Z0-9*`]_[a-zA-Z0-9*`]/g
-  const snakeCases = markdown.match(snakeCaseRegex)
-  console.log(snakeCases)
-  const validatedSnakeCases = validateSnakeCase(snakeCases);
-  console.log(validatedSnakeCases)
-
-  let cleanMarkdown = removeSnakeCases(markdown, validatedSnakeCases);
-  cleanMarkdown = removeEmptyUnderscores(cleanMarkdown);
-  
-  return cleanMarkdown.match(markdownTagsRegex);
+  const markdownTagsRegex = /[\*\`]+/g;
+  if (!validateUnderscores(markdown)) throw new Error('Markdown shouldn not have unclosed tags')
+  return markdown.match(markdownTagsRegex);
 }
 
 const hasNestedAndPairedTags = (tags) => {
@@ -44,30 +36,19 @@ const hasNestedAndPairedTags = (tags) => {
   }
 }
 
-const validateSnakeCase = (arr) => {
-  if (!arr) return [];
-  const sorted = [];
-  for (const element of arr) {
-    if (element[0] === '`' && element[2] === '`') sorted.push(element);
-    if (element[0] === '*' && element[2] === '*') sorted.push(element);
-    if (element[0] !== '`' && element[0] !== '*' && element[2] !== '`' && element[2] !== '*') sorted.push(element);
-  }
-  return sorted;
-}
+const validateUnderscores = (markdown) => {
+  const underscoreRegex = /_/g;
+  const underScoresInUnicodeRegex = /(?<=[^\s.,])_(?=[^\s.,])/g;
+  const underScoreTagsRegex = /(?<=[ ,.:;\n\t]|^)_(?=\S)(.+?)(?<=\S)_(?=[ ,.:;\n\t]|$)/g;
+  const withoutEmptyUnderScores = removeEmptyUnderscores(markdown);
+  const tags = withoutEmptyUnderScores.match(underScoreTagsRegex).join(',')
 
-const removeSnakeCases = (markdown, arr) => {
-  if (!arr) return markdown
-  for (const markdownElement of arr) {
-    if (markdownElement[0] === '*' && markdownElement[2] === '*') {
-      markdown = markdown.replace(markdownElement,'* *');
-    }
-    else if (markdownElement[0] === '`' && markdownElement[2] === '`') {
-      markdown = markdown.replace(markdownElement,'` `');
-    } else {
-      markdown = markdown.replace(markdownElement, '');
-    }
-  }
-  return markdown;
+  const tagsUnderscores = tags.match(underscoreRegex).length;
+  const snakeCases = withoutEmptyUnderScores.match(underScoresInUnicodeRegex).length;
+  const snakeCasesInTags = tags.match(underScoresInUnicodeRegex).length;
+
+  const validatedUnderscores = tagsUnderscores + snakeCases - snakeCasesInTags;
+  return withoutEmptyUnderScores.match(underscoreRegex).length === validatedUnderscores;
 }
 
 const removeEmptyUnderscores = (markdown) => {
