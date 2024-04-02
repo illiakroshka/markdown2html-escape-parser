@@ -28,7 +28,7 @@ export class Parser {
 
    getMarkdownTags (markdown)  {
     const markdownTagsRegex = /[\*\`]+/g;
-    if (!this.validateUnderscores(markdown)) throw new Error('Markdown shouldn not have unclosed tags')
+    if (!this.validateUnderscores(markdown)) throw new Error('Markdown shouldn not have nested tags')
     return markdown.match(markdownTagsRegex);
   }
 
@@ -47,15 +47,20 @@ export class Parser {
     const underScoresInUnicodeRegex = /(?<=[^\s.,])_(?=[^\s.,])/g;
     const underScoreTagsRegex = /(?<=[ ,.:;\n\t]|^)_(?=\S)(.+?)(?<=\S)_(?=[ ,.:;\n\t]|$)/g;
     const withoutEmptyUnderScores = this.removeEmptyUnderscores(markdown);
-    const tags = withoutEmptyUnderScores.match(underScoreTagsRegex).join(',')
 
-    const tagsUnderscores = tags.match(underscoreRegex).length;
-    const snakeCases = withoutEmptyUnderScores.match(underScoresInUnicodeRegex).length;
-    const snakeCasesInTags = tags.match(underScoresInUnicodeRegex).length;
+    const tags = withoutEmptyUnderScores.match(underScoreTagsRegex) ? withoutEmptyUnderScores.match(underScoreTagsRegex).join(',') : '';
+     const markdownTagsRegex = /[\*\`]+/g;
+     const otherMarkdownTags = tags.match(markdownTagsRegex) ? tags.match(markdownTagsRegex).length : 0;
+     if (otherMarkdownTags) return false;
 
-    const validatedUnderscores = tagsUnderscores + snakeCases - snakeCasesInTags;
-    return withoutEmptyUnderScores.match(underscoreRegex).length === validatedUnderscores;
-  }
+     const tagsUnderscores = tags.match(underscoreRegex) ? tags.match(underscoreRegex).length : 0;
+     const snakeCases = withoutEmptyUnderScores.match(underScoresInUnicodeRegex) ? withoutEmptyUnderScores.match(underScoresInUnicodeRegex).length : 0;
+     const snakeCasesInTags = tags.match(underScoresInUnicodeRegex) ? tags.match(underScoresInUnicodeRegex).length : 0;
+
+     const validatedUnderscores = tagsUnderscores + snakeCases - snakeCasesInTags;
+     const withoutEmpty = withoutEmptyUnderScores.match(underscoreRegex) ? withoutEmptyUnderScores.match(underscoreRegex).length : 0
+     return withoutEmpty === validatedUnderscores;
+   }
 
   removeEmptyUnderscores (markdown) {
     return markdown.replace(/(?<=^|\s)_+(?=\s|$)/g,'');
@@ -85,6 +90,7 @@ export class Parser {
     const hashGenerator = this.preformattedHashGenerator();
     const preformattedRegex = /```\n([\s\S]*?)\n```/g
     const preformattedText = markdown.match(preformattedRegex);
+    if (!preformattedText) return markdown;
     for (const text of preformattedText) {
       let hash = hashGenerator.next();
       this.preformattedTextMap.set(hash, text);

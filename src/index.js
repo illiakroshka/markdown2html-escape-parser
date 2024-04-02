@@ -16,19 +16,24 @@ const convent = async (filePath) => {
   const currentDir = path.dirname(currentModuleUrl.pathname);
   const parentDir = path.join(currentDir, '..');
   const absolutePath = path.join(parentDir, filePath[2]);
-  let format = '';
+  let format = formats['escape'];
+  let outPath = '';
+  if (filePath.find(item => item === '--out')) {
+    outPath = path.join(parentDir,filePath[4])
+    format = formats['html'];
+  }
+
   if (filePath.find((item) => item === '--format')) {
     format = formats[filePath[6]] ? formats[filePath[6]] : formats.html;
   }
   const parser = new Parser(format);
   const data = await readFile(absolutePath);
-  const html = parser.parse(data);
+  const parsedData = parser.parse(data);
 
-  if (filePath.find(item => item === '--out')){
-    const outPath = path.join(parentDir,filePath[4])
-    await writeFile(outPath, html)
+  if(outPath){
+    await writeFile(outPath, parsedData)
   }else {
-    console.log(html)
+    console.log(parsedData)
   }
 };
 
