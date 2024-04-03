@@ -36,7 +36,7 @@ export class Parser {
     if (!tags) return;
     if (tags.length % 2) throw new Error('Markdown shouldn not have unclosed tags')
     for (let i = 0; i < tags.length; i+=2) {
-      if (tags[i] !== tags[i+1]) {
+      if (tags[i] !== tags[i+2]) {
         throw new Error('Markdown has nested tags');
       }
     }
